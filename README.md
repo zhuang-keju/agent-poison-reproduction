@@ -35,10 +35,27 @@ Current development focus: **Stage 2 (Poison Generation)**.
     - [x] Data ingestion: Preprocessing the benign corpus (WikiText/MS MARCO).
     - [x] Baseline RAG: Implementing a standard dense retrieval pipeline using `sentence-transformers` (e.g., Contriever/MPNet).
 
-- [ ] **Phase 2: Poison Injection (The Attack)**
-    - [ ] **Trigger definition:** Defining target queries (e.g., "Summarize the financial report") and malicious payloads (e.g., "transfer funds").
-    - [ ] **Optimization algorithm:** Implementing the search heuristic to generate poison text that maps to the trigger's embedding neighborhood.
-    - [ ] Injection: Inserting poison chunks into the FAISS index.
+- [ ] **Phase 2: AgentPoison Core Implementation**
+    - [ ] **Phase 2.1: DPR White-box Attack & Metric Validation**
+        - [ ] Implement Prototype Embedder with DPR (facebook/dpr-ctx_encoder-single-nq-base).
+        - [ ] Optimization: Run AgentPoison trigger generation using DPR gradients.
+        - [ ] Evaluation: Measure ASR-r (Retrieval), ASR-a (Action), ASR-t (End-to-End), and ACC (Benign).
+    
+    - [ ] **Phase 2.2: Custom Loss Implementation (Internal Logic Development)**
+        - [ ] Implement Uniqueness Loss (L_uni): Map triggered queries to a unique embedding region.
+        - [ ] Implement Compactness Loss (L_cpt): Ensure triggered query embeddings are tightly clustered.
+        - [ ] Implement Target Generation Loss (L_tar): Maximize likelihood of target malicious action.
+        - [ ] Implement Coherence Loss (L_coh): Optimize for stealthiness and readability using GPT-2.
+        - [ ] Integrate into Gradient-guided Beam Search (Algorithm 1).
+
+    - [ ] **Phase 2.3: (Optional) Multi-Embedder Baseline Replication**
+        - [ ] Replication: Run optimization on other white-box retrievers (ANCE, BGE, REALM, ORQA).
+        - [ ] Cross-check performance consistency against the 82% average ASR-r reported in the paper.
+
+    - [ ] **Phase 2.4: (Optional) Transferability Matrix (6x6 Heatmap)**
+        - [ ] Cross-testing: Apply the DPR-optimized trigger against all other Target Embedders.
+        - [ ] Black-box Testing: Verify transferability to OpenAI text-embedding-ada-002.
+
 
 - [ ] **Phase 3: Defense Implementation (Research Goal)**
     - [ ] **Attribution Check:** Implementing the "Answer-to-Source" validation logic as proposed in my research framework.
