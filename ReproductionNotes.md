@@ -23,3 +23,8 @@
     * **DPR Gradients:** Responsible for getting the poison chunk **"Retrieved"** (entering the context window).
     * **LLM Guidance:** Responsible for optimizing the trigger to **"Bridge the Context"**. It ensures the trigger linguistically induces the LLM to accept the retrieved poison as valid context and generate the malicious action (Generation Steering).
     * **Conclusion:** The poison data is the **bullet**, the Trigger is the **scope** (aiming for retrieval), and Target Guidance is the **gunpowder** (ensuring the bullet penetrates the LLM's own safety defenses).
+
+token replacement: for N triggers with x (2-6) token size, the tensor is N * x, hence [:, index].
+
+
+DB embedding in load_db_qa: either pretrained from the .pkl, or computed from "model" parameter, which is obtained from load_models() in utils.py.
