@@ -8,6 +8,7 @@
     * **Code Location:** `algo/trigger_optimization.py` -> `compute_avg_cluster_distance`
     * **Core Formula:** `score = overall_avg_distance - 0.1 * variance`
     * **Mechanism:** The optimization loop aims to **Maximize** this `score`. Since `variance` is subtracted, maximizing the score effectively **minimizes the variance**. This forces all generated trigger embeddings to "cluster tightly together" (high compactness) without needing to pre-calculate a specific target coordinate.
+    * variance is computed using compute_variance(), which calculates the norm of all the embeddings subtracting the mean embedding. although the name is "variance", it actually computes the norm, or the square root of the variance.
 
 ### B. The Implicit Implementation of Uniqueness Loss ($\mathcal{L}_{uni}$)
 * **Paper Description:** The paper describes maximizing MMD (Maximum Mean Discrepancy) to locate sparse regions in the embedding space.
