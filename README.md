@@ -37,8 +37,9 @@ Current development focus: **Stage 2 (Poison Generation)**.
 
 - [ ] **Phase 2: AgentPoison Core Implementation**
     - [ ] **Phase 2.1: DPR White-box Attack & Metric Validation**
-        - [ ] Implement Prototype Embedder with DPR (facebook/dpr-ctx_encoder-single-nq-base).
-        - [ ] Optimization: Run AgentPoison trigger generation using DPR gradients.
+        - [x] Implement Prototype Embedder with DPR (facebook/dpr-ctx_encoder-single-nq-base).
+        - [x] Optimization: Run AgentPoison trigger generation using DPR gradients.
+        - [ ] Plotting: Plot how the query embeddings move with respect to the database embeddings, on both QA agent and agent driver (currently plotted QA agent)
         - [ ] Evaluation: Measure ASR-r (Retrieval), ASR-a (Action), ASR-t (End-to-End), and ACC (Benign).
     
     - [ ] **Phase 2.2: Custom Loss Implementation (Internal Logic Development)**
