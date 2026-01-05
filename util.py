@@ -6,6 +6,8 @@ import torch
 from pathlib import Path
 from tqdm import tqdm
 
+device = "cuda:0" if torch.cuda.is_available() else "cpu"
+
 
 
 def candidate_filter(candidates,
