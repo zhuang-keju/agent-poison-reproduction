@@ -194,7 +194,7 @@ def plot_PCA_full(query_embeddings, db_embeddings, root_dir, title):
 
 
 
-def example_plot(agent_name, db_embeddings):
+def example_plot(agent_name, db_embeddings, model_name):
     # 1. 确保 args.agent 设置正确
     # args.agent = "ad"
     print(f"🎨 Testing Background Visualization for Agent: {agent_name}")
@@ -233,7 +233,7 @@ def example_plot(agent_name, db_embeddings):
     plt.figure(figsize=(12, 10))
     plt.scatter(reduced_db[:, 0], reduced_db[:, 1], c='grey', alpha=0.3, s=10, label='Benign Samples (AgentDriver)')
     
-    plt.title(f'AgentDriver Background Distribution\n(Model: {args.model})')
+    plt.title(f'AgentDriver Background Distribution\n(Model: {model_name})')
     plt.xlabel('PC 1')
     plt.ylabel('PC 2')
     plt.legend()
