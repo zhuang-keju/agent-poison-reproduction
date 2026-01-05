@@ -191,3 +191,52 @@ def plot_PCA_full(query_embeddings, db_embeddings, root_dir, title):
     plt.savefig(save_path, dpi=150) # dpi 调高一点更清晰
     plt.show() # 在 Notebook 中显示
     plt.close()
+
+
+
+def example_plot(agent_name, db_embeddings):
+    # 1. 确保 args.agent 设置正确
+    # args.agent = "ad"
+    print(f"🎨 Testing Background Visualization for Agent: {agent_name}")
+    
+    # 2. 加载数据库 Embeddings (良性样本)
+    # 这步会用到你刚刚修改好的路径逻辑
+    # if args.agent == "ad":
+    #     database_samples_dir = "agentdriver/data/finetune/data_samples_train.json"
+    #     db_dir = "agentdriver/data/memory"
+    #     # 加载 (如果之前内存不够，这里可能会有点慢，大概几秒到几十秒)
+    #     print("⏳ Loading DB embeddings...")
+    #     db_embeddings = load_db_ad_simple(database_samples_dir, db_dir, args.model, model, tokenizer, device)
+        
+    #     # 如果 load_db_ad 返回的是 tuple，取第一个；如果是 tensor 直接用
+    #     if isinstance(db_embeddings, tuple):
+    #         db_embeddings = db_embeddings[0]
+    print(f"✅ DB Embeddings Loaded. Shape: {db_embeddings.shape}")
+    
+    # 3. 执行 PCA (只对背景)
+    print("🧮 Running PCA on benign samples...")
+    db_np = db_embeddings.detach().cpu().numpy()
+    
+    # 为了画图好看，如果数据量太大 (>10000)，可以随机采样一部分，或者全画
+    # AgentDriver 全量大概有几万条，全画出来效果最好（只要不卡死浏览器）
+    if len(db_np) > 20000:
+        print(f"  (Sampling 20000 points from {len(db_np)} for visualization speed)")
+        indices = np.random.choice(len(db_np), 20000, replace=False)
+        db_viz = db_np[indices]
+    else:
+        db_viz = db_np
+    
+    pca = PCA(n_components=2)
+    reduced_db = pca.fit_transform(db_viz)
+    
+    # 4. 绘图 (纯灰色模式)
+    plt.figure(figsize=(12, 10))
+    plt.scatter(reduced_db[:, 0], reduced_db[:, 1], c='grey', alpha=0.3, s=10, label='Benign Samples (AgentDriver)')
+    
+    plt.title(f'AgentDriver Background Distribution\n(Model: {args.model})')
+    plt.xlabel('PC 1')
+    plt.ylabel('PC 2')
+    plt.legend()
+    plt.grid(True, alpha=0.2)
+    plt.savefig('island_shape.png', dpi=300, bbox_inches='tight')
+    plt.show()
