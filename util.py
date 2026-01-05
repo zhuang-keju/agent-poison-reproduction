@@ -204,3 +204,110 @@ def load_db_ad_simple(database_samples_dir="data/finetune/data_samples_train.jso
     db_embeddings = embeddings.squeeze(1)
 
     return db_embeddings
+
+
+def bert_get_adv_emb(data, model, tokenizer, num_adv_passage_tokens, adv_passage_ids, adv_passage_attention, device=device):
+    """
+    Optimized version of bert_get_adv_emb with batch processing for both QA and AD tasks.
+    """
+    # ------------------------------------------------------------------
+    # 1. Data Preprocessing (Handle different Agent types)
+    # ------------------------------------------------------------------
+    
+    # CASE A: QA Task (StrategyQA)
+    if "question" in data.keys():
+        text_input = data["question"]
+    
+    # CASE B: AD Task (AgentDriver) ---> 这是你需要添加的部分
+    elif "ego" in data.keys() and "perception" in data.keys():
+        # AgentDriver 的输入分为 ego（自身状态）和 perception（感知信息）
+        # 原理：utils.py 中是 f"{ego} {perception}"
+        # 优化：使用列表推导式一次性处理整个 batch，而不是写慢速循环
+        text_input = [f"{ego} {perception}" for ego, perception in zip(data["ego"], data["perception"])]
+        
+    else:
+        raise ValueError(f"Unrecognized data keys: {data.keys()}")
+
+    # ------------------------------------------------------------------
+    # 2. Parallel Tokenization (Batch Level)
+    # ------------------------------------------------------------------
+    # 一次性 Tokenize 整个 Batch，而不是一个个做
+    
+    with torch.no_grad():
+        tokenized_input = tokenizer(
+            text_input, 
+            padding='max_length', 
+            truncation=True, 
+            max_length=512 - num_adv_passage_tokens, # 留出位置给 trigger
+            return_tensors="pt"
+        )
+        
+        input_ids = tokenized_input["input_ids"].to(device)
+        attention_mask = tokenized_input["attention_mask"].to(device)
+        # print(input_ids.shape) # batch_size * x
+        # print(attention_mask.shape) # batch_size * x
+        # print(adv_passage_ids.shape) # cand_size * token_size
+        # print(adv_passage_attention.shape) # numcand * token
+        
+        # ------------------------------------------------------------------
+        # 3. Trigger Insertion (Tensor Broadcasting)
+        # ------------------------------------------------------------------
+        # 获取当前 Batch 大小
+        batch_size = input_ids.shape[0]
+        candidate_size = adv_passage_ids.shape[0]
+
+        if candidate_size != 1:
+            adv_passage_ids = adv_passage_ids.unsqueeze(0) # 1*numcand * token
+            adv_passage_attention = adv_passage_attention.unsqueeze(0) # 1 * numcand * token
+
+            input_ids = input_ids.unsqueeze(1) # batch * 1 * x
+            attention_mask = attention_mask.unsqueeze(1) # batch * 1 * x
+
+            # 核心优化：利用 repeat 将 trigger 扩展到和 batch 一样大
+            # 避免了在循环中手动拼接
+            current_adv_ids = adv_passage_ids.repeat(batch_size,1, 1)          # [batch, num_cand, trigger_len]
+            current_adv_attn = adv_passage_attention.repeat(batch_size, 1, 1)   # [batch, num_cand, trigger_len]
+            input_ids = input_ids.repeat(1, candidate_size, 1) # batch, numcand, x
+            attention_mask = attention_mask.repeat(1, candidate_size, 1) # batch, numcand, x
+
+            current_adv_ids = current_adv_ids.view(-1, current_adv_ids.shape[-1])
+            current_adv_attn = current_adv_attn.view(-1, current_adv_attn.shape[-1])
+            input_ids = input_ids.view(-1, input_ids.shape[-1])
+            attention_mask = attention_mask.view(-1, attention_mask.shape[-1])
+            
+            # 将 Trigger 拼接到原始输入的末尾 (Suffix Trigger)
+            # [batch, seq_len] + [batch, trigger_len] -> [batch, seq_len + trigger_len]
+            suffix_adv_passage_ids = torch.cat((input_ids, current_adv_ids), dim=1)
+            suffix_adv_passage_attention = torch.cat((attention_mask, current_adv_attn), dim=1)
+            # print(suffix_adv_passage_ids.shape) # batch * numcand * 512, as specified in tokenizer
+        
+        else:
+            # 核心优化：利用 repeat 将 trigger 扩展到和 batch 一样大
+            # 避免了在循环中手动拼接
+            current_adv_ids = adv_passage_ids.repeat(batch_size, 1)          # [batch, trigger_len]
+            current_adv_attn = adv_passage_attention.repeat(batch_size, 1)   # [batch, trigger_len]
+            
+            # 将 Trigger 拼接到原始输入的末尾 (Suffix Trigger)
+            # [batch, seq_len] + [batch, trigger_len] -> [batch, seq_len + trigger_len]
+            suffix_adv_passage_ids = torch.cat((input_ids, current_adv_ids), dim=1)
+            suffix_adv_passage_attention = torch.cat((attention_mask, current_adv_attn), dim=1)
+
+        
+        # 构造模型输入字典
+        p_sent = {
+            'input_ids': suffix_adv_passage_ids, 
+            'attention_mask': suffix_adv_passage_attention
+        }
+        
+    # ------------------------------------------------------------------
+    # 4. Forward Pass
+    # ------------------------------------------------------------------
+    # 兼容 DataParallel 和普通模型
+    if isinstance(model, torch.nn.DataParallel):
+            p_emb = model.module.bert(**p_sent).pooler_output
+    elif hasattr(model, "bert"):
+            p_emb = model.bert(**p_sent).pooler_output
+    else:
+            p_emb = model(**p_sent).pooler_output
+            
+    return p_emb # (batch*numcand) * token
